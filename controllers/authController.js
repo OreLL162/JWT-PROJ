@@ -3,13 +3,17 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
 
+function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+  }
+
 export async function register(req, res) {
   
     try {
       const { username, email, password } = req.body;
   
       if (!username || !password || !email) {
-        return res.status(400).json({ message: 'Provide Credentials' });
+        return res.status(400).json({ message: 'Provide all Credentials' });
       }
   
       const existingUser = await User.findOne({ username });
@@ -41,22 +45,32 @@ export async function register(req, res) {
   }
 
 
-export async function login(req, res) {
+export async function login(req, res) { // When user Loggin in, he recieves OTP (one time password) to email 
+                                        // after enteting OTP, the user gets his access token and refresh token
 
     try {
-        const { username, password ,email } = req.body;
-        const user = await User.findOne({ username });
-        if (!user || !(await bcrypt.compare(password, user.password)))
+        const { username, email ,password } = req.body;
+
+        if ( !username || !email || !password){
+            return res.status(400).json({ message: 'Provide all Credentials' });
+        }
+
+        const existingUser = await User.findOne({ username ,email });
+
+        if (!existingUser || !(await bcrypt.compare(password, existingUser.password)) ) {
           return res.status(401).json({ msg: 'Invalid credentials' });
-      
-        await user.save();
+        }
 
+        const otp = generateOTP();
+        existingUser.otp = otp;
+        existingUser.otpExpires = Date.now() + 300000;
+        await existingUser.save();
+    
+        console.log(`OTP for ${username}: ${otp}`);
+        res.json({ msg: 'OTP sent' });
 
-
-
-    } catch ( error) {
-
+    } catch (error) {
+        console.error('Login error:', error);
+        return res.status(500).json({ message: 'Server error during Login' });
     }
-
-
 }
