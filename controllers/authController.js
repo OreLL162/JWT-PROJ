@@ -7,6 +7,15 @@ function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
   }
 
+function generateToken(user) {
+    return (
+        jwt.sign(
+            { id: user._id.toString(), username: user.username },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+          ));
+}
+
 export async function register(req, res) {
   
     try {
@@ -74,3 +83,45 @@ export async function login(req, res) { // When user Loggin in, he recieves OTP 
         return res.status(500).json({ message: 'Server error during Login' });
     }
 }
+
+export async function verifyOTP(req, res){
+
+    try {
+        const {username, otp} = req.body; 
+        const user = await User.findOne({ username });
+        
+        // Cant find the user 
+        if(!user) {
+            return res.status(401).json({msg: "User was not found"})
+        }
+
+        // Provided Wrong or expired OTP
+        if( user.otp !== otp || Date.now() > user.otpExpires) {
+            return res.status(401).json({ msg: 'Invalid or expired OTP' });
+        }
+        
+        // Clear OTP 
+        user.otp = null;
+        user.otpExpires = null;
+        await user.save(); 
+
+        //Produce JWT
+        const token = generateToken(user);
+    
+        res.cookie('access_token', token, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'Strict',
+            maxAge: 60 * 60 * 1000
+          });
+        
+        console.log(` Token successfully created for user ${user.username}`);
+        return res.status(200).json({ msg: 'Login successful, token set in cookies' });
+
+    } catch (error) {
+
+        console.error('Login error:', error);
+        return res.status(500).json({ message: 'Server error during Login' });
+    }
+}
+
