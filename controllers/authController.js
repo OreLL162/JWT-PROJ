@@ -1,6 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import sendEmail from '../utils/sendEmail.js';
+import { otpEmailText } from '../utils/emailTemplates.js';
+
 
 
 function generateOTP() {
@@ -74,9 +77,18 @@ export async function login(req, res) { // When user Loggin in, he recieves OTP 
         existingUser.otp = otp;
         existingUser.otpExpires = Date.now() + 300000;
         await existingUser.save();
-    
         console.log(`OTP for ${username}: ${otp}`);
-        res.json({ msg: 'OTP sent' });
+        
+
+
+        // send the OTP email
+        const emailBody = otpEmailText(existingUser.username, otp);
+        await sendEmail(existingUser.email, 'Your OTP Code', emailBody);
+
+
+
+        // console.log(`OTP for ${username} sent to ${existingUser.email}`);
+        return res.json({ msg: 'OTP sent to email' });
 
     } catch (error) {
         console.error('Login error:', error);
@@ -105,7 +117,7 @@ export async function verifyOTP(req, res){
         user.otpExpires = null;
         await user.save(); 
 
-        //Produce JWT
+        //Produce JWT to user
         const token = generateToken(user);
     
         res.cookie('access_token', token, {
