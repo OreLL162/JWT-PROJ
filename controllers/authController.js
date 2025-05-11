@@ -137,3 +137,44 @@ export async function verifyOTP(req, res){
     }
 }
 
+export async function resendOTP(req, res) {
+
+    try {
+
+        const {username} = req.body; 
+
+        if (!username) {
+            return res.status(400).json({ msg: 'Username is required' });
+          }
+
+          const user = await User.findOne({ username });
+          
+          if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+          }
+
+          const now = Date.now();
+
+          if( user.otpExpires && now < user.otpExpires - 4 * 60 * 1000) {
+            const waitTime = Math.ceil((user.otpExpires - 4 * 60 * 1000 - now) / 1000);
+            return res.status(429).json({ msg: `Please wait ${waitTime}s before requesting a new OTP` });
+          }
+
+          const otp = generateOTP()
+          user.otp = otp;
+          user.otpExpires = now + 5 * 60 * 1000; 
+          await user.save();
+
+          console.log(`Resent OTP to ${user.username}: ${otp}`);
+
+          //Resend OTP mail again
+
+          const emailBody = otpEmailText(user.username, otp);
+          await sendEmail(user.email, 'Your OTP Code', emailBody);
+
+          res.status(200).json({msg:"OTP resend successfully!"});
+    } catch (error) {
+        console.error('Error resending OTP:', error);
+        return res.status(500).json({ msg: 'Server error while resending OTP' });
+    }
+}
