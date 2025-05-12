@@ -9,7 +9,7 @@ dotenv.config();
 
 const app = express();
 app.use(cors({
-    origin: 'http://localhost:3000', // frontend URL or Postman origin
+    origin: 'http://localhost:5173', // frontend URL or Postman origin
     credentials: true
   }));
 app.use(express.json());

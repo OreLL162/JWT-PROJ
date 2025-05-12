@@ -61,13 +61,13 @@ export async function login(req, res) { // When user Loggin in, he recieves OTP 
                                         // after enteting OTP, the user gets his access token and refresh token
 
     try {
-        const { username, email ,password } = req.body;
+        const { username, password } = req.body;
 
-        if ( !username || !email || !password){
+        if ( !username || !password){
             return res.status(400).json({ message: 'Provide all Credentials' });
         }
 
-        const existingUser = await User.findOne({ username ,email });
+        const existingUser = await User.findOne({ username });
 
         if (!existingUser || !(await bcrypt.compare(password, existingUser.password)) ) {
           return res.status(401).json({ msg: 'Invalid credentials' });
