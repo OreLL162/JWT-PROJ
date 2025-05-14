@@ -119,6 +119,7 @@ export async function verifyOTP(req, res){
 
         //Produce JWT to user
         const token = generateToken(user);
+        console.log(`This is your token: ${token}`);
     
         res.cookie('access_token', token, {
             httpOnly: true,
